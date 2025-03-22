@@ -1,4 +1,4 @@
-#include "tap_device.h"
+#include "../headers/tap_device.h"
 
 // Implementation of TAP device functions
 HANDLE open_tap_device(char *guid) {
