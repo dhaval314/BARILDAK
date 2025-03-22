@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "ws2tcpip.h": "c"
+        "ws2tcpip.h": "c",
+        "vpn_common.h": "c",
+        "network.h": "c",
+        "tap_device.h": "c",
+        "server.h": "c",
+        "client.h": "c"
     }
 }

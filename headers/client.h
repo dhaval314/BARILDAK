@@ -1,7 +1,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include "network.h"
+#include "../headers/network.h" // Networking functions
+#include "../headers/vpn_common.h" // Shared structures and definitions
 
 // Function declarations for client operations
 SOCKET initialize_client_socket(int local_port);

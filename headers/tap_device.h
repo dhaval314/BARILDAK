@@ -1,8 +1,8 @@
 #ifndef TAP_DEVICE_H
 #define TAP_DEVICE_H
 
-#include "vpn_common.h"
-#include <winioctl.h>
+#include "../headers/vpn_common.h" // Shared structures and definitions
+#include <windows.h> // For HANDLE, DWORD, etc.
 
 // TAP-Windows device constants
 #define TAP_IOCTL_SET_MEDIA_STATUS CTL_CODE(FILE_DEVICE_UNKNOWN, 6, METHOD_BUFFERED, FILE_ANY_ACCESS)
