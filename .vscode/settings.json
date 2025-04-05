@@ -5,6 +5,8 @@
         "network.h": "c",
         "tap_device.h": "c",
         "server.h": "c",
-        "client.h": "c"
+        "client.h": "c",
+        "io.h": "c",
+        "string.h": "c"
     }
 }

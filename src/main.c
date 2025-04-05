@@ -1,57 +1,53 @@
-#include "../headers/vpn_common.h"
-#include "../headers/network.h"
-#include "../headers/client.h"
-
-// Function to get peer info from user input
-void get_peer_info(peer_info *peer) {
-    printf("Enter remote peer's public IP: ");
-    scanf("%15s", peer->public_ip);
-
-    printf("Enter remote peer's public port: ");
-    scanf("%d", &peer->public_port);
-
-    printf("Enter remote peer's private IP: ");
-    scanf("%15s", peer->private_ip);
-
-    printf("Enter remote peer's private port: ");
-    scanf("%d", &peer->private_port);
-
-    // For simplicity, we'll leave the public key empty
-    memset(peer->pubkey, 0, sizeof(peer->pubkey));
-
-    printf("Peer information:\n");
-    printf("Public IP: %s, Public Port: %d\n", peer->public_ip, peer->public_port);
-    printf("Private IP: %s, Private Port: %d\n", peer->private_ip, peer->private_port);
-}
+#include "../include/vpn_common.h"
+#include "../include/network.h"
+#include "../include/tap_device.h"
+#include "../include/client.h"
 
 int main() {
-    const int local_port = 12345; // Local port for this client
+    if(!initialize_winsock()) {
+        return 1;
+    }
 
-    // Local peer information (can be determined via STUN or similar)
-    peer_info local_peer = {
-        .public_ip = "198.51.100.2", // Replace with actual public IP if available
-        .public_port = local_port,
-        .private_ip = "192.168.0.20", // Replace with actual private IP if available
-        .private_port = local_port,
-        .pubkey = {0} // Public key can be added here
-    };
+    // Create TAP device
+    HANDLE tap_handle = open_tap_device();
+    if(tap_handle == INVALID_HANDLE_VALUE) {
+        WSACleanup();
+        return 1;
+    }
 
-    // Remote peer information (to be entered by the user)
+    // Configure TAP interface
+    if(!configure_tap_interface(tap_handle, "10.0.0.1", "255.255.255.0") ||
+       !set_tap_status(tap_handle, TRUE)) {
+        close_tap_device(tap_handle);
+        WSACleanup();
+        return 1;
+    }
+
+    // Create UDP socket
+    SOCKET sock = create_udp_socket(12345);
+    if(sock == INVALID_SOCKET) {
+        close_tap_device(tap_handle);
+        WSACleanup();
+        return 1;
+    }
+
+    // Get peer info
     peer_info remote_peer;
     get_peer_info(&remote_peer);
 
-    // Initialize UDP socket bound to the local port
-    SOCKET sock = initialize_client_socket(local_port);
+    // Perform NAT traversal
+    perform_nat_traversal(sock, NULL, &remote_peer);
 
-    // Perform NAT traversal using UDP hole punching
-    perform_nat_traversal(sock, &local_peer, &remote_peer);
+    // Start VPN client
+    run_vpn_client(sock, tap_handle);
 
-    // Start listening for incoming packets from the remote peer
-    listen_for_peer(sock);
-
-    // Clean up resources
-    closesocket(sock);
+    // Cleanup
+    close_socket(sock);
+    close_tap_device(tap_handle);
     WSACleanup();
 
+    printf("Press Enter to exit...");
+    while(getchar() != '\n');  // Clear input buffer
+    getchar();  // Wait for Enter key
     return 0;
 }

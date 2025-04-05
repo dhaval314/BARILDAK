@@ -1,80 +1,56 @@
-#include "../headers/client.h"
+#include "../include/client.h"
+#include "../include/network.h"
+#include "../include/tap_device.h"
+#include <io.h>      // Add this
+#include <fcntl.h>   // Add this
 
-// Initialize a UDP socket bound to the specified local port
-SOCKET initialize_client_socket(int local_port) {
-    SOCKET sock = create_udp_socket();
-
-    struct sockaddr_in local_addr;
-    local_addr.sin_family = AF_INET;
-    local_addr.sin_addr.s_addr = INADDR_ANY; // Bind to any local address
-    local_addr.sin_port = htons(local_port);
-
-    if (bind(sock, (struct sockaddr*)&local_addr, sizeof(local_addr)) == SOCKET_ERROR) {
-        printf("Failed to bind socket: %d\n", WSAGetLastError());
-        closesocket(sock);
-        WSACleanup();
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Socket bound to local port %d\n", local_port);
-    return sock;
+void get_peer_info(peer_info *peer) {
+    printf("Enter remote peer's public IP: ");
+    scanf("%15s", peer->public_ip);
+    printf("Enter remote peer's public port: ");
+    scanf("%d", &peer->public_port);
+    printf("Enter remote peer's private IP: ");
+    scanf("%15s", peer->private_ip);
+    printf("Enter remote peer's private port: ");
+    scanf("%d", &peer->private_port);
+    printf("Peer info captured successfully.\n");
 }
 
-// Perform NAT traversal using UDP hole punching
-void perform_nat_traversal(SOCKET sock, peer_info *local_peer, peer_info *remote_peer) {
-    printf("Starting NAT traversal...\n");
+void run_vpn_client(SOCKET sock, HANDLE tap_handle) {
+    fd_set read_fds;
+    struct timeval timeout = {1, 0};
+    
+    // Convert Windows HANDLE to file descriptor
+    int tap_fd = _open_osfhandle((intptr_t)tap_handle, _O_RDWR);
 
-    send_hole_punch_packet(sock, remote_peer);
+    while(1) {
+        FD_ZERO(&read_fds);
+        FD_SET(sock, &read_fds);
+        FD_SET(tap_fd, &read_fds);  // Use converted file descriptor
 
-    struct sockaddr_in private_addr;
-    private_addr.sin_family = AF_INET;
-    private_addr.sin_port = htons(remote_peer->private_port);
-    inet_pton(AF_INET, remote_peer->private_ip, &private_addr.sin_addr);
+        int max_fd = (sock > tap_fd) ? sock : tap_fd;
+        if(select(max_fd + 1, &read_fds, NULL, NULL, &timeout) == SOCKET_ERROR) {
+            fprintf(stderr, "Select error: %d\n", WSAGetLastError());
+            break;
+        }
 
-    const char *message = "HOLE_PUNCH_PRIVATE";
-    sendto(sock, message, strlen(message), 0,
-           (struct sockaddr*)&private_addr, sizeof(private_addr));
+        if(FD_ISSET(sock, &read_fds)) {
+            struct sockaddr_in sender;
+            char buffer[BUFFER_SIZE];
+            int bytes_received = receive_udp_packet(sock, buffer, &sender);
+            
+            if(bytes_received > 0) {
+                write_to_tap(tap_handle, (BYTE*)buffer, bytes_received);
+            }
+        }
 
-    printf("Hole punch packets sent to public and private addresses.\n");
-}
-
-// Listen for incoming packets from the peer
-void listen_for_peer(SOCKET sock) {
-    char buffer[1024];
-    struct sockaddr_in sender_addr;
-    int sender_len = sizeof(sender_addr);
-
-    printf("Listening for incoming packets...\n");
-
-    while (1) {
-        int bytes_received = recvfrom(sock, buffer, sizeof(buffer) - 1, 0,
-                                      (struct sockaddr*)&sender_addr, &sender_len);
-
-        if (bytes_received > 0) {
-            buffer[bytes_received] = '\0';
-
-            char sender_ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &sender_addr.sin_addr, sender_ip, INET_ADDRSTRLEN);
-
-            printf("Received %d bytes from %s:%d: %s\n",
-                   bytes_received,
-                   sender_ip,
-                   ntohs(sender_addr.sin_port),
-                   buffer);
+        if(FD_ISSET(tap_fd, &read_fds)) {
+            BYTE buffer[BUFFER_SIZE];
+            DWORD bytes_read = read_from_tap(tap_handle, buffer, BUFFER_SIZE);
+            
+            if(bytes_read > 0) {
+                send_udp_packet(sock, "203.0.113.1", 54321, (const char*)buffer);
+            }
         }
     }
-}
-
-// Send a hole-punching packet to the target peer
-void send_hole_punch_packet(SOCKET sock, peer_info *target) {
-    struct sockaddr_in target_addr;
-    target_addr.sin_family = AF_INET;
-    target_addr.sin_port = htons(target->public_port);
-    inet_pton(AF_INET, target->public_ip, &target_addr.sin_addr);
-
-    const char *message = "HOLE_PUNCH";
-    sendto(sock, message, strlen(message), 0,
-           (struct sockaddr*)&target_addr, sizeof(target_addr));
-
-    printf("Hole punch packet sent to %s:%d\n", target->public_ip, target->public_port);
 }
