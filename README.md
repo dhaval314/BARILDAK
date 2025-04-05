@@ -15,7 +15,7 @@ This is a work-in-progress. The current prototype includes:
 - All-in-one executable
 
 ## Known Issues
-- TAP compaitiblity
+- TAP compatibility
 
 ## How It Works
 
