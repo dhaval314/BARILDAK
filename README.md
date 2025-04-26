@@ -1,4 +1,4 @@
-# Barildak
+#**Barildak**
 
 Barildak is a lightweight peer-to-peer VPN client written in C using Winsock, designed for simulating a virtual LAN connection between two clients over the internet. Its primary use case is enabling LAN-based multiplayer games like Age of Empires II without needing a centralized VPN service like Hamachi or ZeroTier.
 
