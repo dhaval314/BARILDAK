@@ -47,6 +47,21 @@ Run the program as root or with sudo (required for TUN device access):
 ```bash
 sudo ./barildak
 ```
+
+Run this on peer A
+
+```bash
+sudo ip addr add 10.0.0.1/24 dev tun0
+sudo ip link set tun0 up
+```
+
+Run this on peer B
+
+```bash
+sudo ip addr add 10.0.0.1/24 dev tun0
+sudo ip link set tun0 up
+```
+
 ## Notes
 
 - Both peers must run this program, each providing the other's public IP and port.
