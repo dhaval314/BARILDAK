@@ -49,8 +49,6 @@ sudo ./barildak
 ```
 ## Notes
 
-Both peers must run this program, each providing the other's public IP and port.
-
-The program currently does not implement signaling or automatic peer discovery.
-
-The VPN IPs assigned to the TUN interface are static and should be configured separately if used in a real scenario.
+- Both peers must run this program, each providing the other's public IP and port.
+- The program currently does not implement signaling or automatic peer discovery.
+- The VPN IPs assigned to the TUN interface are static and should be configured separately if used in a real scenario.
