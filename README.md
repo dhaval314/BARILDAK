@@ -1,4 +1,4 @@
-# Simple UDP Hole Punching VPN (No STUN)
+# Barildak
 
 This is a minimal VPN program in C that creates a TUN interface and uses UDP hole punching to establish a direct peer-to-peer VPN connection without relying on a STUN server.
 
